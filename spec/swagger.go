@@ -22,7 +22,7 @@ type Swagger struct {
 	Parameters            map[string]Parameter
 	Responses             map[string]Response
 	SecurityDefinitions   map[string]SecurityScheme
-	Security              SecurityRequirements
+	Security              []SecurityRequirements
 	Tags                  []Tag
 	ExternalDocumentation *ExternalDocumentation
 }
@@ -126,8 +126,17 @@ func parseSwagger(swagVal *fastjson.Value, parser *Parser) *Swagger {
 				result.SecurityDefinitions = secDefs
 			}
 		case matchString(key, "security"):
-			if sec := parseSecurityRequirements(v, parser); len(sec) > 0 {
-				result.Security = sec
+			// this is an array of security requirements, so parse the array then parse each
+			if secReqs, e := v.Array(); e != nil {
+				parser.appendError(fmt.Errorf("invalid 'security' value: %w", e))
+			} else {
+				secLoc := parser.currentLoc
+				for i, secVal := range secReqs {
+					parser.currentLoc = fmt.Sprintf("%s[%d]", secLoc, i)
+					if sec := parseSecurityRequirements(secVal, parser); len(sec) > 0 {
+						result.Security = append(result.Security, sec)
+					}
+				}
 			}
 		case matchString(key, "tags"):
 			if tags, e := v.Array(); e != nil {
@@ -169,6 +178,45 @@ func NewExternalDocumentation() *ExternalDocumentation {
 	return &ExternalDocumentation{
 		Extensions: make(Extensions),
 	}
+}
+
+func (ed *ExternalDocumentation) marshal(a *fastjson.Arena) *fastjson.Value {
+	val := a.NewObject()
+	if ed.Description != "" {
+		val.Set("description", a.NewString(ed.Description))
+	}
+	if ed.URL != "" {
+		val.Set("url", a.NewString(ed.URL))
+	}
+	ed.marshalExtensions(val)
+	return val
+}
+
+func (ed *ExternalDocumentation) String() string {
+	if ed == nil {
+		return ""
+	}
+	a := arenaPool.Get()
+	defer func() {
+		a.Reset()
+		arenaPool.Put(a)
+	}()
+	val := ed.marshal(a)
+	return string(val.MarshalTo(nil))
+}
+
+func (ed *ExternalDocumentation) description() string {
+	if ed != nil {
+		return ed.Description
+	}
+	return ""
+}
+
+func (ed *ExternalDocumentation) url() string {
+	if ed != nil {
+		return ed.URL
+	}
+	return ""
 }
 
 // parseExternalDocumentation will attempt to parse an ExternalDocumentation from the source swagger .externalDocumentation JSON values
