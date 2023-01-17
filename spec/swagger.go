@@ -22,7 +22,7 @@ type Swagger struct {
 	Parameters            map[string]Parameter
 	Responses             map[string]Response
 	SecurityDefinitions   map[string]SecurityScheme
-	Security              SecurityRequirements
+	Security              []SecurityRequirements
 	Tags                  []Tag
 	ExternalDocumentation *ExternalDocumentation
 }
@@ -126,8 +126,17 @@ func parseSwagger(swagVal *fastjson.Value, parser *Parser) *Swagger {
 				result.SecurityDefinitions = secDefs
 			}
 		case matchString(key, "security"):
-			if sec := parseSecurityRequirements(v, parser); len(sec) > 0 {
-				result.Security = sec
+			// this is an array of security requirements, so parse the array then parse each
+			if secReqs, e := v.Array(); e != nil {
+				parser.appendError(fmt.Errorf("invalid 'security' value: %w", e))
+			} else {
+				secLoc := parser.currentLoc
+				for i, secVal := range secReqs {
+					parser.currentLoc = fmt.Sprintf("%s[%d]", secLoc, i)
+					if sec := parseSecurityRequirements(secVal, parser); len(sec) > 0 {
+						result.Security = append(result.Security, sec)
+					}
+				}
 			}
 		case matchString(key, "tags"):
 			if tags, e := v.Array(); e != nil {
