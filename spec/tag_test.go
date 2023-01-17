@@ -45,7 +45,7 @@ func Test_parseTag(t *testing.T) {
 	for should, tt := range tests {
 		parser := NewParser(nil)
 		parser.currentLoc = tt.location
-		tagVal := newTagJSON(arena, tt.expectedTag)
+		tagVal := tt.expectedTag.marshal(&arena)
 		t.Run(should, func(t *testing.T) {
 			got := parseTag(tagVal, parser)
 			if tt.expectedErr != nil {
@@ -84,29 +84,4 @@ func tagsEqual(t1, t2 *Tag) bool {
 		}
 	}
 	return true
-}
-
-func newTagJSON(a fastjson.Arena, tag *Tag) *fastjson.Value {
-	if tag == nil {
-		return nil
-	}
-	tagVal := a.NewObject()
-	if tag.Name != "" {
-		tagVal.Set("name", a.NewString(tag.Name))
-	}
-	if tag.Description != "" {
-		tagVal.Set("description", a.NewString(tag.Description))
-	}
-	tag.marshalExtensions(tagVal)
-	if tag.ExternalDocumentation != nil {
-		extDocs := a.NewObject()
-		if tag.ExternalDocumentation.Description != "" {
-			extDocs.Set("description", a.NewString(tag.ExternalDocumentation.Description))
-		}
-		if tag.ExternalDocumentation.URL != "" {
-			extDocs.Set("url", a.NewString(tag.ExternalDocumentation.URL))
-		}
-		tagVal.Set("externalDocs", extDocs)
-	}
-	return tagVal
 }
