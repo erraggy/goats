@@ -171,6 +171,45 @@ func NewExternalDocumentation() *ExternalDocumentation {
 	}
 }
 
+func (ed *ExternalDocumentation) marshal(a *fastjson.Arena) *fastjson.Value {
+	val := a.NewObject()
+	if ed.Description != "" {
+		val.Set("description", a.NewString(ed.Description))
+	}
+	if ed.URL != "" {
+		val.Set("url", a.NewString(ed.URL))
+	}
+	ed.marshalExtensions(val)
+	return val
+}
+
+func (ed *ExternalDocumentation) String() string {
+	if ed == nil {
+		return ""
+	}
+	a := arenaPool.Get()
+	defer func() {
+		a.Reset()
+		arenaPool.Put(a)
+	}()
+	val := ed.marshal(a)
+	return string(val.MarshalTo(nil))
+}
+
+func (ed *ExternalDocumentation) description() string {
+	if ed != nil {
+		return ed.Description
+	}
+	return ""
+}
+
+func (ed *ExternalDocumentation) url() string {
+	if ed != nil {
+		return ed.URL
+	}
+	return ""
+}
+
 // parseExternalDocumentation will attempt to parse an ExternalDocumentation from the source swagger .externalDocumentation JSON values
 func parseExternalDocumentation(edVal *fastjson.Value, parser *Parser) *ExternalDocumentation {
 	// first be sure to capture and reset our parser's location

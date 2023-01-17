@@ -11,6 +11,8 @@ import (
 	"github.com/valyala/fastjson"
 )
 
+var arenaPool fastjson.ArenaPool
+
 // Parser handles the parsing and validation of a swagger spec
 type Parser struct {
 	raw                []byte
@@ -34,7 +36,7 @@ func (p *Parser) HasError() bool {
 	if p == nil {
 		return false
 	}
-	return len(p.errorsByLocation) == 0
+	return len(p.errorsByLocation) > 0
 }
 
 func (p *Parser) Parse() (*Swagger, error) {

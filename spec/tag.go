@@ -22,6 +22,30 @@ func NewTag() *Tag {
 	}
 }
 
+func (t *Tag) marshal(a *fastjson.Arena) *fastjson.Value {
+	v := a.NewObject()
+	v.Set("name", a.NewString(t.Name))
+	v.Set("description", a.NewString(t.Description))
+	if ed := t.ExternalDocumentation; ed != nil {
+		v.Set("externalDocs", ed.marshal(a))
+	}
+	t.marshalExtensions(v)
+	return v
+}
+
+func (t *Tag) String() string {
+	if t == nil {
+		return ""
+	}
+	a := arenaPool.Get()
+	defer func() {
+		a.Reset()
+		arenaPool.Put(a)
+	}()
+	v := t.marshal(a)
+	return string(v.MarshalTo(nil))
+}
+
 // parseTag will attempt to parse a Tag from the source swagger .tags JSON array values
 func parseTag(tagVal *fastjson.Value, parser *Parser) *Tag {
 	// first be sure to capture and reset our parser's location
@@ -38,7 +62,7 @@ func parseTag(tagVal *fastjson.Value, parser *Parser) *Tag {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
 		case matchString(key, "name"):
-			parser.parseString(v, "name", true, func(s string) {
+			parser.parseString(v, "name", false, func(s string) {
 				result.Name = s
 			})
 		case matchString(key, "description"):
