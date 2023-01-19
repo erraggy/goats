@@ -25,12 +25,55 @@ type Swagger struct {
 	Security              []SecurityRequirements
 	Tags                  []Tag
 	ExternalDocumentation *ExternalDocumentation
+	operationMap          OperationMap
+}
+
+// OperationCount returns the count of total operations contained within this spec
+func (s *Swagger) OperationCount() int {
+	if s == nil {
+		return 0
+	}
+	return len(s.operationMap)
+}
+
+// OperationMap returns a copy of the OperationMap within this Swagger
+func (s *Swagger) OperationMap() OperationMap {
+	if s == nil {
+		return nil
+	}
+	results := make(OperationMap, s.OperationCount())
+	for key := range s.operationMap {
+		results[key] = s.operationMap[key]
+	}
+	return results
+}
+
+// Operations returns a sorted slice of all of the Operation objects contained within this spec
+func (s *Swagger) Operations() Operations {
+	if s == nil {
+		return nil
+	}
+	return s.operationMap.Sorted()
+}
+
+// addOperation will add the specified Operation to metadata and return true only if it as added and not preexisting.
+func (s *Swagger) addOperation(op *Operation) bool {
+	if s == nil || op == nil {
+		return false
+	}
+	op.Key = op.Key.Canonicalize()
+	if _, preexisting := s.operationMap[op.Key]; preexisting {
+		return false
+	}
+	s.operationMap[op.Key] = op
+	return true
 }
 
 // NewSwagger returns a new Swagger
 func NewSwagger() *Swagger {
 	return &Swagger{
-		Extensions: make(Extensions),
+		Extensions:   make(Extensions),
+		operationMap: make(map[OperationKey]*Operation),
 	}
 }
 
@@ -43,6 +86,7 @@ func parseSwagger(swagVal *fastjson.Value, parser *Parser) *Swagger {
 		return nil
 	}
 	result := NewSwagger()
+	parser.swagger = result
 	defer func() {
 		// reset after
 		parser.currentLoc = "."

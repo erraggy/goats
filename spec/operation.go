@@ -3,6 +3,8 @@ package spec
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/valyala/fastjson"
 )
@@ -23,16 +25,88 @@ type Operation struct {
 	Responses             Responses
 	Security              []SecurityRequirements
 	ExternalDocumentation *ExternalDocumentation
+	Key                   OperationKey
 }
 
 // NewOperation returns a new Operation object
-func NewOperation() *Operation {
+func NewOperation(path string, method string) *Operation {
 	return &Operation{
 		Extensions: make(Extensions),
+		Key: OperationKey{
+			Path:   path,
+			Method: method,
+		},
 	}
 }
 
-func parseOperation(val *fastjson.Value, parser *Parser) *Operation {
+func (o *Operation) ReferencedDefinitions() *UniqueDefinitionRefs {
+	if o == nil {
+		return nil
+	}
+
+	result := NewUniqueDefinitionRefs(len(o.Parameters) + len(o.Responses.ByStatusCode))
+	for _, param := range o.Parameters {
+		result = result.Merge(param.Schema.ReferencedDefinitions())
+	}
+
+	return result
+}
+
+// OperationKey defines the natural key for any swagger Operation
+type OperationKey struct {
+	Path   string
+	Method string
+}
+
+// Canonicalize will make sure that the method is in all upper-case
+func (k OperationKey) Canonicalize() OperationKey {
+	return OperationKey{
+		Path:   k.Path,
+		Method: strings.ToUpper(k.Method),
+	}
+}
+
+// Operations defines a slice of Operation objects
+type Operations []*Operation
+
+// Sorted returns a sorted slice of Operation objects
+func (ops Operations) Sorted() Operations {
+	if len(ops) == 0 {
+		return ops
+	}
+	sort.Slice(ops, func(i, j int) bool {
+		oi, oj := ops[i], ops[j]
+		if oi.Key.Path < oj.Key.Path {
+			return true
+		}
+		if oi.Key.Path > oj.Key.Path {
+			return false
+		}
+		if oi.Key.Method < oj.Key.Method {
+			return true
+		}
+		return oi.Key.Method > oj.Key.Method
+	})
+	return ops
+}
+
+// OperationMap defines a mapping of Operation objects by each natural OperationKey
+type OperationMap map[OperationKey]*Operation
+
+// Sorted returns a sorted slice of Operation objects
+func (om OperationMap) Sorted() Operations {
+	var (
+		result = make(Operations, len(om))
+		i      = 0
+	)
+	for k := range om {
+		result[i] = om[k]
+		i++
+	}
+	return result.Sorted()
+}
+
+func parseOperation(val *fastjson.Value, parser *Parser, path string, method string) *Operation {
 	// first be sure to capture and reset our parser's location
 	fromLoc := parser.currentLoc
 	defer func() {
@@ -43,7 +117,7 @@ func parseOperation(val *fastjson.Value, parser *Parser) *Operation {
 		parser.appendError(fmt.Errorf("invalid operation value: %w", err))
 		return nil
 	}
-	result := NewOperation()
+	result := NewOperation(path, method)
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
@@ -154,5 +228,8 @@ func parseOperation(val *fastjson.Value, parser *Parser) *Operation {
 			parser.appendError(fmt.Errorf("invalid field name: '%s'", key))
 		}
 	})
+	// store this in our swagger's operations map
+	parser.swagger.addOperation(result)
+
 	return result
 }

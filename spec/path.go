@@ -2,6 +2,7 @@ package spec
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/valyala/fastjson"
 )
@@ -43,7 +44,7 @@ func NewPaths() *Paths {
 	}
 }
 
-func parsePathItem(val *fastjson.Value, parser *Parser) *PathItem {
+func parsePathItem(val *fastjson.Value, parser *Parser, path string) *PathItem {
 	fromLoc := parser.currentLoc
 	defer func() {
 		parser.currentLoc = fromLoc
@@ -58,19 +59,19 @@ func parsePathItem(val *fastjson.Value, parser *Parser) *PathItem {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
 		case matchString(key, "get"):
-			result.Get = parseOperation(v, parser)
+			result.Get = parseOperation(v, parser, path, http.MethodGet)
 		case matchString(key, "put"):
-			result.Put = parseOperation(v, parser)
+			result.Put = parseOperation(v, parser, path, http.MethodPut)
 		case matchString(key, "post"):
-			result.Post = parseOperation(v, parser)
+			result.Post = parseOperation(v, parser, path, http.MethodPost)
 		case matchString(key, "delete"):
-			result.Delete = parseOperation(v, parser)
+			result.Delete = parseOperation(v, parser, path, http.MethodDelete)
 		case matchString(key, "options"):
-			result.Options = parseOperation(v, parser)
+			result.Options = parseOperation(v, parser, path, http.MethodOptions)
 		case matchString(key, "head"):
-			result.Head = parseOperation(v, parser)
+			result.Head = parseOperation(v, parser, path, http.MethodHead)
 		case matchString(key, "patch"):
-			result.Patch = parseOperation(v, parser)
+			result.Patch = parseOperation(v, parser, path, http.MethodPatch)
 		case matchString(key, "parameters"):
 			if vals, e := v.Array(); e != nil {
 				parser.appendError(fmt.Errorf("invalid parameters value: %w", e))
@@ -105,13 +106,14 @@ func parsePaths(val *fastjson.Value, parser *Parser) *Paths {
 	result := NewPaths()
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
+		keyStr := string(key)
 		switch {
 		case matchPath(key):
-			if pi := parsePathItem(v, parser); pi != nil {
-				result.Items[string(key)] = pi
+			if pi := parsePathItem(v, parser, keyStr); pi != nil {
+				result.Items[keyStr] = pi
 			}
 		case matchExtension(key):
-			result.Extensions[string(key)] = v
+			result.Extensions[keyStr] = v
 		default:
 			parser.appendError(fmt.Errorf("invalid field name: '%s'", key))
 		}

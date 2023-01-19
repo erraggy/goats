@@ -50,6 +50,60 @@ func NewSchema() *Schema {
 	}
 }
 
+func (s *Schema) ReferencedDefinitions() *UniqueDefinitionRefs {
+	if refs := s.allRefs(); len(refs) > 0 {
+		result := NewUniqueDefinitionRefs(len(refs))
+		result.AddRefs(refs...)
+		return result
+	}
+	return nil
+}
+
+// allRefs will gather all Reference pointers from within
+func (s *Schema) allRefs() []*Reference {
+	if s == nil {
+		return nil
+	}
+	var results []*Reference
+	if r := s.Ref; r != nil {
+		results = append(results, r)
+	}
+	if s.Items != nil {
+		if sch := s.Items.value; sch != nil {
+			for _, r := range sch.allRefs() {
+				results = append(results, r)
+			}
+		} else {
+			for _, itm := range s.Items.items {
+				for _, r := range itm.allRefs() {
+					results = append(results, r)
+				}
+			}
+		}
+	}
+	if sch, ok := s.AdditionalItems.AsSchema(); ok {
+		for _, r := range sch.allRefs() {
+			results = append(results, r)
+		}
+	}
+	for _, sch := range s.AllOf {
+		for _, r := range sch.allRefs() {
+			results = append(results, r)
+		}
+	}
+	for _, sch := range s.Properties {
+		for _, r := range sch.allRefs() {
+			results = append(results, r)
+		}
+	}
+	if sch, ok := s.AdditionalProperties.AsSchema(); ok {
+		for _, r := range sch.allRefs() {
+			results = append(results, r)
+		}
+	}
+	return results
+}
+
 // StringOrStrings is either a single string or a slice of them
 type StringOrStrings struct {
 	value *string
