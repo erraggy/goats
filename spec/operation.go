@@ -48,6 +48,12 @@ func (o *Operation) ReferencedDefinitions() *UniqueDefinitionRefs {
 	for _, param := range o.Parameters {
 		result = result.Merge(param.Schema.ReferencedDefinitions())
 	}
+	for _, resp := range o.Responses.ByStatusCode {
+		result = result.Merge(resp.Schema.ReferencedDefinitions())
+	}
+	if resp := o.Responses.Default; resp != nil {
+		result = result.Merge(resp.Schema.ReferencedDefinitions())
+	}
 
 	return result
 }
@@ -104,6 +110,78 @@ func (om OperationMap) Sorted() Operations {
 		i++
 	}
 	return result.Sorted()
+}
+
+func (om OperationMap) Contains(opKey OperationKey) bool {
+	if len(om) == 0 {
+		return false
+	}
+	_, found := om[opKey]
+	return found
+}
+
+// Union returns a new map with all items in both maps
+func (om OperationMap) Union(other OperationMap) OperationMap {
+	n1, n2, max := len(om), len(other), 0
+	if n1 > max {
+		max = n1
+	}
+	if n2 > max {
+		max = n2
+	}
+	result := make(OperationMap, max)
+	if max == 0 {
+		return result
+	}
+	for key := range om {
+		result[key] = om[key]
+	}
+	for key := range other {
+		result[key] = other[key]
+	}
+	return result
+}
+
+// Difference returns a new map with items in the current map but not in the other
+func (om OperationMap) Difference(other OperationMap) OperationMap {
+	n := len(om)
+	result := make(OperationMap, n)
+	if n > 0 {
+		otherN := len(other)
+		for key := range om {
+			if otherN == 0 || !other.Contains(key) {
+				result[key] = om[key]
+			}
+		}
+	}
+	return result
+}
+
+// Intersect returns a new map with items that exist only in both maps
+func (om OperationMap) Intersect(other OperationMap) OperationMap {
+	result := make(OperationMap)
+	// outer loop the smaller
+	if nLeft, nRight := len(om), len(other); nLeft < nRight {
+		for key := range om {
+			if op, exists := other[key]; exists {
+				result[key] = op
+			}
+		}
+	} else {
+		for key := range other {
+			if op, exists := om[key]; exists {
+				result[key] = op
+			}
+		}
+	}
+	return result
+}
+
+// SymmetricDifference returns a new map with items in the current map or the other map but not in both
+func (om OperationMap) SymmetricDifference(other OperationMap) OperationMap {
+	aDiff := om.Difference(other)
+	bDiff := other.Difference(om)
+	return aDiff.Union(bDiff)
 }
 
 func parseOperation(val *fastjson.Value, parser *Parser, path string, method string) *Operation {

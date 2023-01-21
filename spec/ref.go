@@ -33,23 +33,34 @@ func (r *Reference) definitionKey() (string, bool) {
 
 type UniqueDefinitionRefs struct {
 	unique map[string]struct{}
-	refs   []string
 }
 
 func NewUniqueDefinitionRefs(cap int) *UniqueDefinitionRefs {
 	return &UniqueDefinitionRefs{
 		unique: make(map[string]struct{}, cap),
-		refs:   make([]string, 0, cap),
 	}
+}
+
+func (u *UniqueDefinitionRefs) Len() int {
+	return len(u.unique)
+}
+
+func (u *UniqueDefinitionRefs) Contains(defRef string) bool {
+	_, found := u.unique[defRef]
+	return found
 }
 
 func (u *UniqueDefinitionRefs) Values() []string {
 	if u == nil {
 		return nil
 	}
-	results := make([]string, len(u.unique))
-	for i := range u.refs {
-		results[i] = u.refs[i]
+	var (
+		results = make([]string, len(u.unique))
+		i       int
+	)
+	for k := range u.unique {
+		results[i] = k
+		i++
 	}
 	return results
 }
@@ -60,22 +71,18 @@ func (u *UniqueDefinitionRefs) AddRefs(refs ...*Reference) {
 	}
 	for _, ref := range refs {
 		if k, ok := ref.definitionKey(); ok {
-			if _, exists := u.unique[k]; !exists {
-				u.unique[k] = struct{}{}
-				u.refs = append(u.refs, k)
-			}
+			u.unique[k] = struct{}{}
 		}
 	}
 }
 
-func (u *UniqueDefinitionRefs) addRefStrings(refs []string) {
+func (u *UniqueDefinitionRefs) addRefStrings(refs map[string]struct{}) {
 	if u == nil {
 		return
 	}
-	for _, ref := range refs {
+	for ref := range refs {
 		if _, exists := u.unique[ref]; !exists {
 			u.unique[ref] = struct{}{}
-			u.refs = append(u.refs, ref)
 		}
 	}
 }
@@ -87,8 +94,14 @@ func (u *UniqueDefinitionRefs) Merge(other *UniqueDefinitionRefs) *UniqueDefinit
 	if other == nil {
 		return u
 	}
-	result := NewUniqueDefinitionRefs(len(u.unique) + len(other.unique))
-	result.addRefStrings(u.refs)
-	result.addRefStrings(other.refs)
-	return result
+
+	both := make(map[string]struct{}, len(u.unique))
+	for s := range u.unique {
+		both[s] = struct{}{}
+	}
+	for s := range other.unique {
+		both[s] = struct{}{}
+	}
+
+	return &UniqueDefinitionRefs{unique: both}
 }
