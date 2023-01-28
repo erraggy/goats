@@ -104,17 +104,6 @@ func (u *UniqueDefinitionRefs) AddRefs(refs ...*Reference) {
 	}
 }
 
-func (u *UniqueDefinitionRefs) addRefStrings(refs map[string]struct{}) {
-	if u == nil {
-		return
-	}
-	for ref := range refs {
-		if _, exists := u.unique[ref]; !exists {
-			u.unique[ref] = struct{}{}
-		}
-	}
-}
-
 func (u *UniqueDefinitionRefs) Merge(other *UniqueDefinitionRefs) *UniqueDefinitionRefs {
 	if u == nil {
 		return other

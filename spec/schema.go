@@ -87,36 +87,24 @@ func (s *Schema) allRefs() []*Reference {
 	}
 	if s.Items != nil {
 		if sch := s.Items.value; sch != nil {
-			for _, r := range sch.allRefs() {
-				results = append(results, r)
-			}
+			results = append(results, sch.allRefs()...)
 		} else {
 			for _, itm := range s.Items.items {
-				for _, r := range itm.allRefs() {
-					results = append(results, r)
-				}
+				results = append(results, itm.allRefs()...)
 			}
 		}
 	}
 	if sch, ok := s.AdditionalItems.AsSchema(); ok {
-		for _, r := range sch.allRefs() {
-			results = append(results, r)
-		}
+		results = append(results, sch.allRefs()...)
 	}
 	for _, sch := range s.AllOf {
-		for _, r := range sch.allRefs() {
-			results = append(results, r)
-		}
+		results = append(results, sch.allRefs()...)
 	}
 	for _, sch := range s.Properties {
-		for _, r := range sch.allRefs() {
-			results = append(results, r)
-		}
+		results = append(results, sch.allRefs()...)
 	}
 	if sch, ok := s.AdditionalProperties.AsSchema(); ok {
-		for _, r := range sch.allRefs() {
-			results = append(results, r)
-		}
+		results = append(results, sch.allRefs()...)
 	}
 	return results
 }

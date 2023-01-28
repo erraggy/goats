@@ -54,7 +54,7 @@ func (s *Swagger) OperationMap() OperationMap {
 	return results
 }
 
-// Operations returns a sorted slice of all of the Operation objects contained within this spec
+// Operations returns a sorted slice of all the Operation objects contained within this spec
 func (s *Swagger) Operations() Operations {
 	if s == nil {
 		return nil
@@ -308,17 +308,17 @@ func (ed *ExternalDocumentation) String() string {
 }
 
 func (ed *ExternalDocumentation) description() string {
-	if ed != nil {
-		return ed.Description
+	if ed == nil {
+		return ""
 	}
-	return ""
+	return ed.Description
 }
 
 func (ed *ExternalDocumentation) url() string {
-	if ed != nil {
-		return ed.URL
+	if ed == nil {
+		return ""
 	}
-	return ""
+	return ed.URL
 }
 
 // parseExternalDocumentation will attempt to parse an ExternalDocumentation from the source swagger .externalDocumentation JSON values
