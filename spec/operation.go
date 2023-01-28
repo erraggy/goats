@@ -26,6 +26,7 @@ type Operation struct {
 	Security              []SecurityRequirements
 	ExternalDocumentation *ExternalDocumentation
 	Key                   OperationKey
+	docLoc                string
 }
 
 // NewOperation returns a new Operation object
@@ -39,20 +40,36 @@ func NewOperation(path string, method string) *Operation {
 	}
 }
 
+// DocumentLocation returns this object's JSON path location
+func (o *Operation) DocumentLocation() string {
+	return o.docLoc
+}
+
+// GatherRefs will add any definition reference keys to the specified refs
+func (o *Operation) GatherRefs(refs map[string]struct{}) {
+	if o == nil {
+		return
+	}
+	for _, itm := range o.Parameters {
+		itm.GatherRefs(refs)
+	}
+	o.Responses.GatherRefs(refs)
+}
+
+// ReferencedDefinitions will return all definition names from all the Reference values within this
 func (o *Operation) ReferencedDefinitions() *UniqueDefinitionRefs {
 	if o == nil {
 		return nil
 	}
 
-	result := NewUniqueDefinitionRefs(len(o.Parameters) + len(o.Responses.ByStatusCode))
+	var result *UniqueDefinitionRefs
 	for _, param := range o.Parameters {
-		result = result.Merge(param.Schema.ReferencedDefinitions())
+		if moreRefs := param.ReferencedDefinitions(); moreRefs.Len() > 0 {
+			result = result.Merge(moreRefs)
+		}
 	}
-	for _, resp := range o.Responses.ByStatusCode {
-		result = result.Merge(resp.Schema.ReferencedDefinitions())
-	}
-	if resp := o.Responses.Default; resp != nil {
-		result = result.Merge(resp.Schema.ReferencedDefinitions())
+	if moreRefs := o.Responses.ReferencedDefinitions(); moreRefs.Len() > 0 {
+		result = result.Merge(moreRefs)
 	}
 
 	return result
@@ -196,6 +213,7 @@ func parseOperation(val *fastjson.Value, parser *Parser, path string, method str
 		return nil
 	}
 	result := NewOperation(path, method)
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

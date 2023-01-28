@@ -15,6 +15,7 @@ type XML struct {
 	Prefix      string
 	IsAttribute bool
 	IsWrapped   bool
+	docLoc      string
 }
 
 // NewXML returns a new XML object
@@ -22,6 +23,11 @@ func NewXML() *XML {
 	return &XML{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (x *XML) DocumentLocation() string {
+	return x.docLoc
 }
 
 func parseXML(val *fastjson.Value, parser *Parser) *XML {
@@ -36,6 +42,7 @@ func parseXML(val *fastjson.Value, parser *Parser) *XML {
 		return nil
 	}
 	result := NewXML()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

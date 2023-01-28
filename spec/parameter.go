@@ -35,6 +35,7 @@ type Parameter struct {
 	MinProperties    int
 	Enum             []any
 	MultipleOf       int
+	docLoc           string
 }
 
 // NewParameter returns a new Parameter object
@@ -42,6 +43,25 @@ func NewParameter() *Parameter {
 	return &Parameter{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (p *Parameter) DocumentLocation() string {
+	return p.docLoc
+}
+
+// GatherRefs will add any definition reference keys to the specified refs
+func (p *Parameter) GatherRefs(refs map[string]struct{}) {
+	p.Schema.GatherRefs(refs)
+}
+
+// ReferencedDefinitions will return all definition names from all the Reference values within this
+func (p *Parameter) ReferencedDefinitions() *UniqueDefinitionRefs {
+	if p == nil {
+		return nil
+	}
+
+	return p.Schema.ReferencedDefinitions()
 }
 
 func parseParameterDefinitions(val *fastjson.Value, parser *Parser) map[string]Parameter {
@@ -75,6 +95,7 @@ func parseParameter(val *fastjson.Value, parser *Parser) *Parameter {
 		return nil
 	}
 	result := NewParameter()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

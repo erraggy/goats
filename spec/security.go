@@ -20,6 +20,7 @@ type SecurityScheme struct {
 	AuthorizationURL string
 	TokenURL         string
 	Scopes           Scopes
+	docLoc           string
 }
 
 // NewSecurityScheme returns a new SecurityScheme object
@@ -29,10 +30,16 @@ func NewSecurityScheme() *SecurityScheme {
 	}
 }
 
+// DocumentLocation returns this object's JSON path location
+func (ss *SecurityScheme) DocumentLocation() string {
+	return ss.docLoc
+}
+
 // Scopes defines https://swagger.io/specification/v2/#scopes-object
 type Scopes struct {
 	Extensions
 	Values map[string]string
+	docLoc string
 }
 
 // NewScopes returns a new Scopes object
@@ -40,6 +47,11 @@ func NewScopes() *Scopes {
 	return &Scopes{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (s *Scopes) DocumentLocation() string {
+	return s.docLoc
 }
 
 func parseSecurityDefinitions(val *fastjson.Value, parser *Parser) map[string]SecurityScheme {
@@ -75,6 +87,7 @@ func parseSecurityScheme(val *fastjson.Value, parser *Parser) *SecurityScheme {
 		return nil
 	}
 	result := NewSecurityScheme()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
@@ -131,6 +144,7 @@ func parseScopes(val *fastjson.Value, parser *Parser) *Scopes {
 		return nil
 	}
 	result := NewScopes()
+	result.docLoc = parser.currentLoc
 	result.Values = make(map[string]string, obj.Len())
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)

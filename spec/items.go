@@ -30,6 +30,7 @@ type Items struct {
 	MinProperties    int
 	Required         bool
 	Enum             []any
+	docLoc           string
 }
 
 // NewItems returns a new Items
@@ -37,6 +38,11 @@ func NewItems() *Items {
 	return &Items{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (i *Items) DocumentLocation() string {
+	return i.docLoc
 }
 
 func parseItems(val *fastjson.Value, parser *Parser) *Items {
@@ -51,6 +57,7 @@ func parseItems(val *fastjson.Value, parser *Parser) *Items {
 		return nil
 	}
 	result := NewItems()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

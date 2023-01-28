@@ -13,6 +13,7 @@ type Response struct {
 	Description string
 	Schema      *Schema
 	Headers     map[string]*Header
+	docLoc      string
 }
 
 // NewResponse returns a new Response object
@@ -22,12 +23,35 @@ func NewResponse() *Response {
 	}
 }
 
+// DocumentLocation returns this object's JSON path location
+func (r *Response) DocumentLocation() string {
+	return r.docLoc
+}
+
+// GatherRefs will add any definition reference keys to the specified refs
+func (r *Response) GatherRefs(refs map[string]struct{}) {
+	if r == nil {
+		return
+	}
+	r.Schema.GatherRefs(refs)
+}
+
+// ReferencedDefinitions will return all definition names from all the Reference values within this
+func (r *Response) ReferencedDefinitions() *UniqueDefinitionRefs {
+	if r == nil {
+		return nil
+	}
+
+	return r.Schema.ReferencedDefinitions()
+}
+
 // Responses defines the responses swagger object
 // https://swagger.io/specification/v2/#responses-object
 type Responses struct {
 	Extensions
 	Default      *Response
 	ByStatusCode map[int]*Response
+	docLoc       string
 }
 
 // NewResponses returns a new Responses object
@@ -36,6 +60,39 @@ func NewResponses() *Responses {
 		Extensions:   make(Extensions),
 		ByStatusCode: make(map[int]*Response),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (rr *Responses) DocumentLocation() string {
+	return rr.docLoc
+}
+
+// GatherRefs will add any definition reference keys to the specified refs
+func (rr *Responses) GatherRefs(refs map[string]struct{}) {
+	if rr == nil {
+		return
+	}
+	rr.Default.GatherRefs(refs)
+	for _, resp := range rr.ByStatusCode {
+		resp.GatherRefs(refs)
+	}
+}
+
+// ReferencedDefinitions will return all definition names from all the Reference values within this
+func (rr *Responses) ReferencedDefinitions() *UniqueDefinitionRefs {
+	if rr == nil {
+		return nil
+	}
+	var result *UniqueDefinitionRefs
+	if moreRefs := rr.Default.ReferencedDefinitions(); moreRefs.Len() > 0 {
+		result = result.Merge(moreRefs)
+	}
+	for _, itm := range rr.ByStatusCode {
+		if moreRefs := itm.ReferencedDefinitions(); moreRefs.Len() > 0 {
+			result = result.Merge(moreRefs)
+		}
+	}
+	return result
 }
 
 func parseResponses(val *fastjson.Value, parser *Parser) *Responses {
@@ -50,6 +107,7 @@ func parseResponses(val *fastjson.Value, parser *Parser) *Responses {
 		return nil
 	}
 	result := NewResponses()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
@@ -103,6 +161,7 @@ func parseResponse(val *fastjson.Value, parser *Parser) *Response {
 		return nil
 	}
 	result := NewResponse()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

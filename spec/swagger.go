@@ -26,6 +26,12 @@ type Swagger struct {
 	Tags                  []Tag
 	ExternalDocumentation *ExternalDocumentation
 	operationMap          OperationMap
+	docLoc                string
+}
+
+// DocumentLocation returns this object's JSON path location
+func (s *Swagger) DocumentLocation() string {
+	return s.docLoc
 }
 
 // OperationCount returns the count of total operations contained within this spec
@@ -54,6 +60,51 @@ func (s *Swagger) Operations() Operations {
 		return nil
 	}
 	return s.operationMap.Sorted()
+}
+
+// GatherRefs will add any definition reference keys to the specified refs
+func (s *Swagger) GatherRefs(refs map[string]struct{}) {
+	if s == nil {
+		return
+	}
+	s.Paths.GatherRefs(refs)
+	for _, itm := range s.Definitions {
+		itm.GatherRefs(refs)
+	}
+	for _, itm := range s.Parameters {
+		itm.GatherRefs(refs)
+	}
+	for _, itm := range s.Responses {
+		itm.GatherRefs(refs)
+	}
+}
+
+// ReferencedDefinitions will return all definition names from all the Reference values within this
+func (s *Swagger) ReferencedDefinitions() *UniqueDefinitionRefs {
+	if s == nil {
+		return nil
+	}
+
+	var result *UniqueDefinitionRefs
+	if moreRefs := s.Paths.ReferencedDefinitions(); moreRefs.Len() > 0 {
+		result = result.Merge(moreRefs)
+	}
+	for _, itm := range s.Definitions {
+		if moreRefs := itm.ReferencedDefinitions(); moreRefs.Len() > 0 {
+			result = result.Merge(moreRefs)
+		}
+	}
+	for _, itm := range s.Parameters {
+		if moreRefs := itm.ReferencedDefinitions(); moreRefs.Len() > 0 {
+			result = result.Merge(moreRefs)
+		}
+	}
+	for _, itm := range s.Responses {
+		if moreRefs := itm.ReferencedDefinitions(); moreRefs.Len() > 0 {
+			result = result.Merge(moreRefs)
+		}
+	}
+	return result
 }
 
 // addOperation will add the specified Operation to metadata and return true only if it as added and not preexisting.
@@ -86,6 +137,7 @@ func parseSwagger(swagVal *fastjson.Value, parser *Parser) *Swagger {
 		return nil
 	}
 	result := NewSwagger()
+	result.docLoc = parser.currentLoc
 	parser.swagger = result
 	defer func() {
 		// reset after
@@ -215,6 +267,7 @@ type ExternalDocumentation struct {
 	Extensions
 	Description string
 	URL         string
+	docLoc      string
 }
 
 // NewExternalDocumentation returns a new ExternalDocumentation
@@ -222,6 +275,11 @@ func NewExternalDocumentation() *ExternalDocumentation {
 	return &ExternalDocumentation{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (ed *ExternalDocumentation) DocumentLocation() string {
+	return ed.docLoc
 }
 
 func (ed *ExternalDocumentation) marshal(a *fastjson.Arena) *fastjson.Value {
@@ -276,6 +334,7 @@ func parseExternalDocumentation(edVal *fastjson.Value, parser *Parser) *External
 		return nil
 	}
 	result := NewExternalDocumentation()
+	result.docLoc = parser.currentLoc
 	edObj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

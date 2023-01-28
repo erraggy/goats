@@ -17,6 +17,7 @@ type Info struct {
 	Version        string
 	Contact        *Contact
 	License        *License
+	docLoc         string
 }
 
 // NewInfo returns a new Info
@@ -26,13 +27,19 @@ func NewInfo() *Info {
 	}
 }
 
+// DocumentLocation returns this object's JSON path location
+func (i *Info) DocumentLocation() string {
+	return i.docLoc
+}
+
 // Contact represents the swagger .info.contact object
 // https://swagger.io/specification/v2/#contact-object
 type Contact struct {
 	Extensions
-	Name  string
-	URL   string
-	Email string
+	Name   string
+	URL    string
+	Email  string
+	docLoc string
 }
 
 // NewContact returns a new Contact
@@ -42,12 +49,18 @@ func NewContact() *Contact {
 	}
 }
 
+// DocumentLocation returns this object's JSON path location
+func (c *Contact) DocumentLocation() string {
+	return c.docLoc
+}
+
 // License represents the swagger .info.license object
 // https://swagger.io/specification/v2/#license-object
 type License struct {
 	Extensions
-	Name string
-	URL  string
+	Name   string
+	URL    string
+	docLoc string
 }
 
 // NewLicense returns a new License
@@ -55,6 +68,11 @@ func NewLicense() *License {
 	return &License{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (l *License) DocumentLocation() string {
+	return l.docLoc
 }
 
 // parseInfo will attempt to parse an Info from the source swagger .info JSON value
@@ -70,6 +88,7 @@ func parseInfo(infoVal *fastjson.Value, parser *Parser) *Info {
 		return nil
 	}
 	result := NewInfo()
+	result.docLoc = parser.currentLoc
 	infoObj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
@@ -115,6 +134,7 @@ func parseContact(contactVal *fastjson.Value, parser *Parser) *Contact {
 		return nil
 	}
 	result := NewContact()
+	result.docLoc = parser.currentLoc
 	contactObj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
@@ -152,6 +172,7 @@ func parseLicense(licenseVal *fastjson.Value, parser *Parser) *License {
 		return nil
 	}
 	result := NewLicense()
+	result.docLoc = parser.currentLoc
 	licenseObj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

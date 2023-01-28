@@ -5,12 +5,21 @@ import "strings"
 // Reference a JSON reference link
 // https://swagger.io/specification/v2/#reference-object
 type Reference struct {
-	uri string
+	uri    string
+	docLoc string
 }
 
 // NewRef will return a *Reference for the specified URI
-func NewRef(uri string) *Reference {
-	return &Reference{uri: uri}
+func NewRef(uri string, loc string) *Reference {
+	return &Reference{
+		uri:    uri,
+		docLoc: loc,
+	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (r *Reference) DocumentLocation() string {
+	return r.docLoc
 }
 
 // URI is the link
@@ -21,6 +30,16 @@ func (r *Reference) URI() string {
 	return r.uri
 }
 
+// GatherRefs will add any definition reference keys to the specified refs
+func (r *Reference) GatherRefs(refs map[string]struct{}) {
+	if r == nil {
+		return
+	}
+	if ref, ok := r.definitionKey(); ok {
+		refs[ref] = struct{}{}
+	}
+}
+
 // definitionKey returns the definition name portion of the URI and if it is a definition key
 func (r *Reference) definitionKey() (string, bool) {
 	full := r.URI()
@@ -28,6 +47,9 @@ func (r *Reference) definitionKey() (string, bool) {
 		return "", false
 	}
 	frag := strings.TrimPrefix(full, "#/definitions/")
+	if frag == "" {
+		return "", false
+	}
 	return frag, frag != full
 }
 
@@ -42,10 +64,16 @@ func NewUniqueDefinitionRefs(cap int) *UniqueDefinitionRefs {
 }
 
 func (u *UniqueDefinitionRefs) Len() int {
+	if u == nil {
+		return 0
+	}
 	return len(u.unique)
 }
 
 func (u *UniqueDefinitionRefs) Contains(defRef string) bool {
+	if u == nil {
+		return false
+	}
 	_, found := u.unique[defRef]
 	return found
 }

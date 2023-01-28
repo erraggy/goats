@@ -41,6 +41,7 @@ type Schema struct {
 	AdditionalProperties  *SchemaOrBool
 	ExternalDocumentation *ExternalDocumentation
 	Default               any
+	docLoc                string
 }
 
 // NewSchema returns a new Schema
@@ -50,6 +51,22 @@ func NewSchema() *Schema {
 	}
 }
 
+// DocumentLocation returns this object's JSON path location
+func (s *Schema) DocumentLocation() string {
+	return s.docLoc
+}
+
+// GatherRefs will add any definition reference keys to the specified refs
+func (s *Schema) GatherRefs(refs map[string]struct{}) {
+	if s == nil {
+		return
+	}
+	for _, ref := range s.allRefs() {
+		ref.GatherRefs(refs)
+	}
+}
+
+// ReferencedDefinitions will return all definition names from all the Reference values within this
 func (s *Schema) ReferencedDefinitions() *UniqueDefinitionRefs {
 	if refs := s.allRefs(); len(refs) > 0 {
 		result := NewUniqueDefinitionRefs(len(refs))
@@ -236,12 +253,13 @@ func parseSchema(val *fastjson.Value, parser *Parser) *Schema {
 		return nil
 	}
 	result := NewSchema()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
 		case matchString(key, "$ref"):
 			parser.parseString(v, "$ref", false, func(s string) {
-				result.Ref = NewRef(s)
+				result.Ref = NewRef(s, parser.currentLoc)
 			})
 		case matchString(key, "format"):
 			parser.parseString(v, "format", true, func(s string) {

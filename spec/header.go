@@ -31,6 +31,7 @@ type Header struct {
 	Required         bool
 	Enum             []any
 	MultipleOf       int
+	docLoc           string
 }
 
 // NewHeader returns a new Header object
@@ -38,6 +39,11 @@ func NewHeader() *Header {
 	return &Header{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (h *Header) DocumentLocation() string {
+	return h.docLoc
 }
 
 func parseHeader(val *fastjson.Value, parser *Parser) *Header {
@@ -52,6 +58,7 @@ func parseHeader(val *fastjson.Value, parser *Parser) *Header {
 		return nil
 	}
 	result := NewHeader()
+	result.docLoc = parser.currentLoc
 	obj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {

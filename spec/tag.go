@@ -13,6 +13,7 @@ type Tag struct {
 	Name                  string
 	Description           string
 	ExternalDocumentation *ExternalDocumentation
+	docLoc                string
 }
 
 // NewTag returns a new Tag
@@ -20,6 +21,11 @@ func NewTag() *Tag {
 	return &Tag{
 		Extensions: make(Extensions),
 	}
+}
+
+// DocumentLocation returns this object's JSON path location
+func (t *Tag) DocumentLocation() string {
+	return t.docLoc
 }
 
 func (t *Tag) marshal(a *fastjson.Arena) *fastjson.Value {
@@ -58,6 +64,7 @@ func parseTag(tagVal *fastjson.Value, parser *Parser) *Tag {
 		parser.appendError(fmt.Errorf("invalid result value: %w", err))
 	}
 	result := NewTag()
+	result.docLoc = parser.currentLoc
 	tagObj.Visit(func(key []byte, v *fastjson.Value) {
 		parser.currentLoc = fmt.Sprintf("%s.%s", fromLoc, key)
 		switch {
