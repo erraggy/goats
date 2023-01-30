@@ -129,6 +129,8 @@ func NewSwagger() *Swagger {
 }
 
 // parseSwagger will attempt to parse the root swagger object from the root JSON value
+//
+//nolint:funlen,gocyclo,cyclop // this is as short as it can be
 func parseSwagger(swagVal *fastjson.Value, parser *Parser) *Swagger {
 	swagObj, err := swagVal.Object()
 	if err != nil {
@@ -163,40 +165,17 @@ func parseSwagger(swagVal *fastjson.Value, parser *Parser) *Swagger {
 				result.BasePath = s
 			})
 		case matchString(key, "schemes"):
-			if schemes, e := v.Array(); e != nil {
-				parser.appendError(fmt.Errorf("invalid schemes value: %w", e))
-			} else {
-				for i, sVal := range schemes {
-					parser.currentLoc = fmt.Sprintf(".schemes[%d]", i)
-					parser.parseString(sVal, "schemes item", true, func(s string) {
-						result.Schemes = append(result.Schemes, s)
-					})
-				}
-			}
+			parser.parseStringArray(v, "schemes", false, func(s string) {
+				result.Schemes = append(result.Schemes, s)
+			})
 		case matchString(key, "consumes"):
-			if consumes, e := v.Array(); e != nil {
-				parser.appendError(fmt.Errorf("invalid consumes value: %w", e))
-			} else {
-				consumesLoc := parser.currentLoc
-				for i, cVal := range consumes {
-					parser.currentLoc = fmt.Sprintf("%s[%d]", consumesLoc, i)
-					parser.parseString(cVal, "consumes item", true, func(s string) {
-						result.Consumes = append(result.Consumes, s)
-					})
-				}
-			}
+			parser.parseStringArray(v, "consumes", false, func(s string) {
+				result.Consumes = append(result.Consumes, s)
+			})
 		case matchString(key, "produces"):
-			if produces, e := v.Array(); e != nil {
-				parser.appendError(fmt.Errorf("invalid produces value: %w", e))
-			} else {
-				producesLoc := parser.currentLoc
-				for i, pVal := range produces {
-					parser.currentLoc = fmt.Sprintf("%s[%d]", producesLoc, i)
-					parser.parseString(pVal, "produces item", true, func(s string) {
-						result.Produces = append(result.Produces, s)
-					})
-				}
-			}
+			parser.parseStringArray(v, "produces", false, func(s string) {
+				result.Produces = append(result.Produces, s)
+			})
 		case matchString(key, "info"):
 			if info := parseInfo(v, parser); info != nil {
 				result.Info = *info
@@ -321,7 +300,8 @@ func (ed *ExternalDocumentation) url() string {
 	return ed.URL
 }
 
-// parseExternalDocumentation will attempt to parse an ExternalDocumentation from the source swagger .externalDocumentation JSON values
+// parseExternalDocumentation will attempt to parse an ExternalDocumentation from the
+// source swagger .externalDocumentation JSON values
 func parseExternalDocumentation(edVal *fastjson.Value, parser *Parser) *ExternalDocumentation {
 	// first be sure to capture and reset our parser's location
 	fromLoc := parser.currentLoc

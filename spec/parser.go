@@ -11,7 +11,15 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-var arenaPool fastjson.ArenaPool
+var (
+	arenaPool fastjson.ArenaPool //nolint:gochecknoglobals // intentional
+)
+
+type NilParserError struct{}
+
+func (e *NilParserError) Error() string {
+	return "goats: nil parser"
+}
 
 // Parser handles the parsing and validation of a swagger spec
 type Parser struct {
@@ -41,7 +49,7 @@ func (p *Parser) HasError() bool {
 
 func (p *Parser) Parse() (*Swagger, error) {
 	if p == nil {
-		return nil, nil
+		return nil, &NilParserError{}
 	}
 	if len(p.raw) == 0 {
 		return nil, errors.New("cannot parse empty raw swagger JSON bytes")
@@ -95,6 +103,17 @@ func (p *Parser) parseString(v *fastjson.Value, fieldName string, allowEmpty boo
 		}
 	}
 	p.parseAndValidateString(v, fieldName, validator)
+}
+
+func (p *Parser) parseStringArray(v *fastjson.Value, name string, allowEmpty bool, each func(string)) {
+	if items, err := v.Array(); err != nil {
+		p.appendError(fmt.Errorf("invalid %s value: %w", name, err))
+	} else {
+		for i, itm := range items {
+			p.currentLoc = fmt.Sprintf(".%s[%d]", name, i)
+			p.parseString(itm, fmt.Sprintf("%s item", name), allowEmpty, each)
+		}
+	}
 }
 
 func (p *Parser) parseAndValidateString(v *fastjson.Value, fieldName string, validate func(s string) error) {

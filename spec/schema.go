@@ -187,7 +187,7 @@ func NewSchemaOrBoolObject(obj Schema) *SchemaOrBool {
 }
 
 // AsBool returns this as a bool value and if it is a bool
-func (sb *SchemaOrBool) AsBool() (value bool, isBool bool) {
+func (sb *SchemaOrBool) AsBool() (bool, bool) {
 	if sb == nil {
 		return false, false
 	}
@@ -229,6 +229,7 @@ func parseDefinitions(val *fastjson.Value, parser *Parser) map[string]Schema {
 	return result
 }
 
+//nolint:funlen,nestif,gocyclo,cyclop // the object graphs are complex so the code to parse them is as well
 func parseSchema(val *fastjson.Value, parser *Parser) *Schema {
 	// first be sure to capture and reset our parser's location
 	fromLoc := parser.currentLoc

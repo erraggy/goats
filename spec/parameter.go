@@ -84,6 +84,7 @@ func parseParameterDefinitions(val *fastjson.Value, parser *Parser) map[string]P
 	return result
 }
 
+//nolint:funlen // can't make it any shorter
 func parseParameter(val *fastjson.Value, parser *Parser) *Parameter {
 	fromLoc := parser.currentLoc
 	defer func() {

@@ -201,6 +201,7 @@ func (om OperationMap) SymmetricDifference(other OperationMap) OperationMap {
 	return aDiff.Union(bDiff)
 }
 
+//nolint:funlen,gocognit,gocyclo,cyclop // this is as short as it gets
 func parseOperation(val *fastjson.Value, parser *Parser, path string, method string) *Operation {
 	// first be sure to capture and reset our parser's location
 	fromLoc := parser.currentLoc

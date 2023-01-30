@@ -57,9 +57,9 @@ type UniqueDefinitionRefs struct {
 	unique map[string]struct{}
 }
 
-func NewUniqueDefinitionRefs(cap int) *UniqueDefinitionRefs {
+func NewUniqueDefinitionRefs(capacity int) *UniqueDefinitionRefs {
 	return &UniqueDefinitionRefs{
-		unique: make(map[string]struct{}, cap),
+		unique: make(map[string]struct{}, capacity),
 	}
 }
 

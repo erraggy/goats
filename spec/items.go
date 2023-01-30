@@ -45,6 +45,7 @@ func (i *Items) DocumentLocation() string {
 	return i.docLoc
 }
 
+//nolint:funlen // it just doesn't get shorter than this
 func parseItems(val *fastjson.Value, parser *Parser) *Items {
 	// first be sure to capture and reset our parser's location
 	fromLoc := parser.currentLoc
