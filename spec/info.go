@@ -54,6 +54,13 @@ func (c *Contact) DocumentLocation() string {
 	return c.docLoc
 }
 
+func (c *Contact) String() string {
+	if c == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"name":%q,"email":%q,"url":%q}`, c.Name, c.Email, c.URL)
+}
+
 // License represents the swagger .info.license object
 // https://swagger.io/specification/v2/#license-object
 type License struct {
@@ -73,6 +80,13 @@ func NewLicense() *License {
 // DocumentLocation returns this object's JSON path location
 func (l *License) DocumentLocation() string {
 	return l.docLoc
+}
+
+func (l *License) String() string {
+	if l == nil {
+		return "{}"
+	}
+	return fmt.Sprintf(`{"name":%q,"url":%q}`, l.Name, l.URL)
 }
 
 // parseInfo will attempt to parse an Info from the source swagger .info JSON value
