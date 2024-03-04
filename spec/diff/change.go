@@ -1,6 +1,12 @@
 package diff
 
-import "github.com/valyala/fastjson"
+import (
+	"fmt"
+
+	"github.com/valyala/fastjson"
+
+	"github.com/erraggy/goats/spec"
+)
 
 // Op enumeration of the possible diff operations
 type Op uint8
@@ -40,6 +46,7 @@ const (
 	ClassRoot
 	ClassInfo
 	ClassDefinition
+	ClassPaths
 	ClassOperation
 )
 
@@ -51,12 +58,14 @@ func (c Class) String() string {
 		return "Info"
 	case ClassDefinition:
 		return "Definition"
+	case ClassPaths:
+		return "Paths"
 	case ClassOperation:
 		return "Operation"
 	case ClassUnknown:
 		return "Unknown"
 	default:
-		return "Invalid Class"
+		return fmt.Sprintf("Invaild Class: %d", c)
 	}
 }
 
@@ -75,7 +84,7 @@ func (c Change) AsJSON() *fastjson.Value {
 	var a fastjson.Arena
 	defer a.Reset()
 	v := a.NewObject()
-	v.Set("operation", a.NewString(c.Operation.String()))
+	v.Set("diffOperation", a.NewString(c.Operation.String()))
 	v.Set("class", a.NewString(c.Class.String()))
 	v.Set("from", a.NewString(c.OldValue))
 	v.Set("to", a.NewString(c.NewValue))
@@ -90,7 +99,8 @@ func (c Change) String() string {
 
 // Report describes all the changes detected from an analysis
 type Report struct {
-	Changes map[Class]map[string][]Change
+	Changes            map[Class]map[string][]Change
+	ChangesByOperation map[spec.OperationKey][]Change
 }
 
 func (r Report) String() string {

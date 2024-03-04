@@ -81,6 +81,10 @@ type OperationKey struct {
 	Method string
 }
 
+func (k OperationKey) String() string {
+	return fmt.Sprintf("%s:%s", k.Path, k.Method)
+}
+
 // Canonicalize will make sure that the method is in all upper-case
 func (k OperationKey) Canonicalize() OperationKey {
 	return OperationKey{

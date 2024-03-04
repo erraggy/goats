@@ -1,0 +1,30 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0",
+    "title": "test"
+  },
+  "paths": {
+    "/foo": {
+      "get": {
+        "operationId": "getFoo",
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/bar": {
+      "get": {
+        "operationId": "GetBar",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}

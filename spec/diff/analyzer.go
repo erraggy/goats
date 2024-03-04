@@ -41,9 +41,184 @@ func Analyze(fromSpecJSON, toSpecJSON []byte) (*Report, error) {
 	report.Changes[ClassRoot] = analyzeRoot(fromSwag, toSwag)
 	report.Changes[ClassInfo] = analyzeInfo(&fromSwag.Info, &toSwag.Info)
 
+	// TODO: redo paths to gather all changes for paths and path items
+	report.Changes[ClassPaths] = analyzePaths(&fromSwag.Paths, &toSwag.Paths)
+
+	// TODO: redo operations to gather all changes by spec.OperationKey
+	report.Changes[ClassOperation] = analyzeOperations(fromSwag.Paths.Items, toSwag.Paths.Items)
+
 	// TODO: still need to
 
 	return report, nil
+}
+
+func analyzeOperations(fromPaths, toPaths map[string]*spec.PathItem) changesByLocation {
+	changes := make(changesByLocation)
+	set := make(map[spec.OperationKey][2]*spec.Operation, len(fromPaths))
+	// initialize with our from values
+	for path := range fromPaths {
+		pi := fromPaths[path]
+		if pi == nil {
+			continue
+		}
+		if op := pi.Get; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		if op := pi.Put; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		if op := pi.Post; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		if op := pi.Delete; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		if op := pi.Options; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		if op := pi.Head; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		if op := pi.Patch; op != nil {
+			set[op.Key] = [2]*spec.Operation{op, nil}
+		}
+		// take care of path item extensions in this loop
+		if toPathItem, found := toPaths[path]; found {
+			diffExtensions(fmt.Sprintf(".paths[%s]", path), changes, pi.Extensions, toPathItem.Extensions)
+		}
+	}
+	// update with our to values
+	for path := range toPaths {
+		pi := toPaths[path]
+		if pi == nil {
+			continue
+		}
+		if op := pi.Get; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+		if op := pi.Put; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+		if op := pi.Post; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+		if op := pi.Delete; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+		if op := pi.Options; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+		if op := pi.Head; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+		if op := pi.Patch; op != nil {
+			if tuple, exists := set[op.Key]; exists {
+				tuple[1] = op
+				set[op.Key] = tuple
+			} else {
+				set[op.Key] = [2]*spec.Operation{nil, op}
+			}
+		}
+	}
+	for opKey, fromAndTo := range set {
+		fromOp, toOp := fromAndTo[0], fromAndTo[1]
+		if toOp == nil {
+			// Operation removed
+			c := Change{
+				FieldLocation: fromOp.DocumentLocation(),
+				FieldName:     opKey.String(),
+				OldValue:      "TODO: implement something to show here",
+				Operation:     OpItemRemoved,
+				Class:         ClassOperation,
+			}
+			changes.add(c)
+			continue
+		}
+		if fromOp == nil {
+			// Operation added
+			c := Change{
+				FieldLocation: toOp.DocumentLocation(),
+				FieldName:     opKey.String(),
+				NewValue:      "TODO: implement something to show here",
+				Operation:     OpItemAdded,
+				Class:         ClassOperation,
+			}
+			changes.add(c)
+			continue
+		}
+		// TODO: Implement operation change reporting
+		if fromOp != toOp {
+			// Operation changed
+			c := Change{
+				FieldLocation: toOp.DocumentLocation(),
+				FieldName:     opKey.String(),
+				OldValue:      "TODO: implement something to show here",
+				NewValue:      "TODO: implement something to show here",
+				Operation:     OpUpdate,
+				Class:         ClassOperation,
+			}
+			changes.add(c)
+			continue
+		}
+	}
+	return changes
+}
+
+func analyzePaths(fromPaths, toPaths *spec.Paths) changesByLocation {
+	changes := make(changesByLocation)
+	added, removed := diffStringMapKeys(fromPaths.Items, toPaths.Items)
+	for _, path := range added {
+		c := Change{
+			FieldLocation: ".paths",
+			FieldName:     "paths",
+			NewValue:      path,
+			Operation:     OpItemAdded,
+			Class:         ClassPaths,
+		}
+		changes.add(c)
+	}
+	for _, path := range removed {
+		c := Change{
+			FieldLocation: ".paths",
+			FieldName:     "paths",
+			OldValue:      path,
+			Operation:     OpItemRemoved,
+			Class:         ClassPaths,
+		}
+		changes.add(c)
+	}
+	diffExtensions(".paths", changes, fromPaths.Extensions, toPaths.Extensions)
+	return changes
 }
 
 type changesByLocation map[string][]Change
@@ -344,6 +519,22 @@ func diffExtensions(baseLoc string, changes changesByLocation, fromExt, toExt sp
 			changes[c.FieldLocation] = append(changes[c.FieldLocation], c)
 		}
 	}
+}
+
+func diffStringMapKeys[V any](from, to map[string]V) (added []string, removed []string) {
+	// load removed
+	for k := range from {
+		if _, kept := to[k]; !kept {
+			removed = append(removed, k)
+		}
+	}
+	// load added
+	for k := range to {
+		if _, exists := from[k]; !exists {
+			added = append(added, k)
+		}
+	}
+	return added, removed
 }
 
 func diffStringSlice(from, to []string) (added []string, removed []string) {
